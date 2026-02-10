@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nightcord-nako",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-02-10",
+  "ai": {
+    "binding": "AI"
+  },
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "sticker-embeddings"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "production"
+  }
+  // Uncomment and configure your custom domain
+  // "routes": [
+  //   {
+  //     "pattern": "your-domain.com",
+  //     "custom_domain": true
+  //   }
+  // ]
+}

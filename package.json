@@ -1,0 +1,33 @@
+{
+  "name": "nightcord-nako",
+  "version": "1.0.0",
+  "description": "Nako chatbot API using Cloudflare Workers AI",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy",
+    "type-check": "tsc --noEmit",
+    "prepare-stickers": "npx tsx scripts/prepare-stickers.ts",
+    "upload-vectors": "npx tsx scripts/upload-vectors.ts",
+    "upload-to-vectorize": "npx tsx scripts/upload-to-vectorize.ts"
+  },
+  "keywords": [
+    "chatbot",
+    "cloudflare-workers",
+    "ai",
+    "vectorize",
+    "sticker-recommendation"
+  ],
+  "author": "bili_47177171806",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bili-47177171806/nako.git"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240129.0",
+    "dotenv": "^17.2.4",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.78.0"
+  }
+}

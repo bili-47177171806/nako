@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.wrangler/
+
+# Environment files
+.env
+.dev.vars
+
+# Local configuration (keep your own config, don't commit)
+wrangler.toml
+wrangler.jsonc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated files
+processed-stickers.json
+upload-progress.json
+vectors-to-upload.ndjson
+
+# Claude Code
+.claude/
