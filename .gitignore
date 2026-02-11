@@ -35,5 +35,8 @@ processed-stickers.json
 upload-progress.json
 vectors-to-upload.ndjson
 
+# Local files
+.github-checklist.md
+
 # Claude Code
 .claude/
