@@ -12,6 +12,18 @@
       "index_name": "sticker-embeddings"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "AUTH_DB",
+      "database_name": "sekai_pass_db",
+      "database_id": "YOUR_AUTH_DATABASE_ID"
+    },
+    {
+      "binding": "DB",
+      "database_name": "pjsekai_db",
+      "database_id": "YOUR_STATS_DATABASE_ID"
+    }
+  ],
   "vars": {
     "ENVIRONMENT": "production"
   }

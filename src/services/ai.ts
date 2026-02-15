@@ -1,73 +1,64 @@
 import type { Env, HistoryMessage, AIResponse } from "../types";
-import { getNakoSystemPrompt, AI_CONFIG } from "../config/persona";
+import type { ModelProvider } from "../models/base";
+import { WorkersAIProvider } from "../models/workers-ai";
+import { OpenAIProvider } from "../models/openai";
+import { getPersona } from "../personas";
 
-function formatHistory(history: HistoryMessage[]): string {
-  if (!history || history.length === 0) return "";
+/**
+ * 创建模型提供商实例
+ * @param env Cloudflare Workers 环境变量
+ * @param personaName 人设名称
+ * @returns 模型提供商实例
+ */
+function createModelProvider(env: Env, personaName?: string): ModelProvider {
+  const persona = getPersona(personaName);
 
-  return history
-    .slice(-30)  // Keep only last 30 messages
-    .map(msg => {
-      const name = msg.isBot ? "Nako" : msg.userId;
-      return `[${name}]: ${msg.message}`;
-    })
-    .join("\n");
+  if (persona.provider === "openai") {
+    // 使用 OpenAI 格式 API
+    const endpoint = env.OPENAI_ENDPOINT;
+    const apiKey = env.OPENAI_API_KEY;
+
+    if (!endpoint || !apiKey) {
+      throw new Error(
+        "OpenAI API configuration missing. Please set OPENAI_ENDPOINT and OPENAI_API_KEY in Cloudflare Secrets."
+      );
+    }
+
+    const model = persona.openai?.model || "gpt-3.5-turbo";
+
+    return new OpenAIProvider(
+      endpoint,
+      apiKey,
+      model,
+      persona.modelConfig
+    );
+  } else {
+    // 使用 Workers AI
+    return new WorkersAIProvider(env.AI, persona.modelConfig);
+  }
 }
 
-export async function generateNakoResponse(
-  ai: Ai,
+/**
+ * 生成 AI 回复（支持多人设）
+ * @param env Cloudflare Workers 环境变量
+ * @param userMessage 用户消息
+ * @param userId 用户 ID
+ * @param history 历史消息
+ * @param stream 是否流式输出
+ * @param personaName 人设名称（可选，默认 "nako"）
+ * @returns AI 回复或流式响应
+ */
+export async function generateAIResponse(
+  env: Env,
   userMessage: string,
   userId: string,
   history: HistoryMessage[],
-  stream: boolean = false
+  stream: boolean = false,
+  personaName?: string
 ): Promise<AIResponse | ReadableStream> {
-  const historyContext = formatHistory(history);
+  const persona = getPersona(personaName);
+  const provider = createModelProvider(env, personaName);
+  const systemPrompt = persona.getSystemPrompt();
 
-  const messages = [
-    { role: "system", content: getNakoSystemPrompt() },
-    {
-      role: "user",
-      content: historyContext
-        ? `${historyContext}\n[${userId}]: ${userMessage}`
-        : `[${userId}]: ${userMessage}`
-    }
-  ];
-
-  if (stream) {
-    // Return streaming response
-    const streamResponse = await ai.run(AI_CONFIG.model, {
-      messages,
-      temperature: AI_CONFIG.temperature,
-      max_tokens: AI_CONFIG.maxTokens,
-      top_p: AI_CONFIG.topP,
-      frequency_penalty: AI_CONFIG.frequencyPenalty,
-      presence_penalty: AI_CONFIG.presencePenalty,
-      stream: true,
-    }) as ReadableStream;
-
-    return streamResponse;
-  } else {
-    // Return complete response
-    const result = await ai.run(AI_CONFIG.model, {
-      messages,
-      temperature: AI_CONFIG.temperature,
-      max_tokens: AI_CONFIG.maxTokens,
-      top_p: AI_CONFIG.topP,
-      frequency_penalty: AI_CONFIG.frequencyPenalty,
-      presence_penalty: AI_CONFIG.presencePenalty,
-    }) as any;
-
-    // Extract response text from Chat Completion Response format
-    const responseText = result.choices?.[0]?.message?.content || "";
-    const reasoningContent = result.choices?.[0]?.message?.reasoning_content;
-
-    return {
-      response: responseText,
-      reasoningContent: reasoningContent || undefined,
-      usage: {
-        promptTokens: result.usage?.prompt_tokens || 0,
-        completionTokens: result.usage?.completion_tokens || 0,
-        totalTokens: result.usage?.total_tokens || 0,
-      }
-    };
-  }
+  return provider.chat(systemPrompt, userMessage, userId, history, stream, personaName);
 }

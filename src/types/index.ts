@@ -53,5 +53,11 @@ export interface ValidationResult {
 export interface Env {
   AI: Ai;
   VECTORIZE: VectorizeIndex;
+  AUTH_DB: D1Database;  // SEKAI Pass 数据库
+  DB: D1Database;  // pjsekai 数据库（用于统计）
   ENVIRONMENT?: string;
+
+  // OpenAI 格式 API 配置（从 Cloudflare Secrets 获取）
+  OPENAI_ENDPOINT?: string;  // OpenAI 兼容 API 端点
+  OPENAI_API_KEY?: string;   // API Key (sk-xxx)
 }

@@ -26,6 +26,14 @@
 
 ## API 接口
 
+所有 API 接口都需要 SEKAI Pass 认证。请在请求头中包含有效的 access token：
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+如果未提供或 token 无效，将返回 401 Unauthorized 错误。
+
 ### POST /api/chat
 
 发送消息给 Nako 并获取回复。
@@ -166,6 +174,7 @@ data: [DONE]
 ```bash
 curl -X POST https://your-worker.workers.dev/api/recommend \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{
     "prompt": "开心快乐",
     "topK": 3
@@ -183,12 +192,14 @@ curl -X POST https://your-worker.workers.dev/api/recommend \
 
 **示例（GET）：**
 ```bash
-curl "https://your-worker.workers.dev/api/recommend?prompt=开心快乐&topK=3"
+curl "https://your-worker.workers.dev/api/recommend?prompt=开心快乐&topK=3" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **带排除项：**
 ```bash
-curl "https://your-worker.workers.dev/api/recommend?prompt=开心&excludeRecent=之前用过[stamp0001],另一条消息"
+curl "https://your-worker.workers.dev/api/recommend?prompt=开心&excludeRecent=之前用过[stamp0001],另一条消息" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ## 开发
@@ -232,6 +243,7 @@ npm run dev
 ```bash
 curl -X POST http://localhost:8787/api/chat \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{
     "userId": "TestUser",
     "message": "你好啊Nako",
@@ -243,6 +255,7 @@ curl -X POST http://localhost:8787/api/chat \
 ```bash
 curl -X POST http://localhost:8787/api/chat \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{
     "userId": "TestUser",
     "message": "你好啊Nako",
@@ -269,6 +282,8 @@ nightcord-nako/
 │   ├── handlers/
 │   │   ├── chat.ts           # 聊天请求处理
 │   │   └── recommend.ts      # 表情推荐处理
+│   ├── middleware/
+│   │   └── auth.ts           # SEKAI Pass 认证中间件
 │   ├── services/
 │   │   ├── ai.ts             # AI 服务封装
 │   │   └── sticker.ts        # 表情搜索服务

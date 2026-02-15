@@ -1,10 +1,15 @@
 import type { Env, ChatRequest } from "../types";
 import { validateChatRequest } from "../utils/validation";
 import { createSuccessResponse, createErrorResponse } from "../utils/response";
-import { generateNakoResponse } from "../services/ai";
+import { generateAIResponse } from "../services/ai";
 import { getStickerRecommendation, insertStickerIntoMessage } from "../services/sticker";
+import type { User } from "../middleware/auth";
+import { getPersona } from "../personas";
 
-export async function handleChat(request: Request, env: Env): Promise<Response> {
+export async function handleChat(request: Request, env: Env, user: User): Promise<Response> {
+  // 从 URL 查询参数获取 persona
+  const url = new URL(request.url);
+  const personaName = url.searchParams.get("persona") || undefined;
   try {
     // Parse request body
     let body: ChatRequest;
@@ -20,19 +25,27 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
       return createErrorResponse("INVALID_REQUEST", validation.error!);
     }
 
+    // 验证 persona 是否存在
+    try {
+      getPersona(personaName);
+    } catch (error) {
+      return createErrorResponse("INVALID_PERSONA", (error as Error).message);
+    }
+
     // Generate AI response
-    const aiResponse = await generateNakoResponse(
-      env.AI,
+    const aiResponse = await generateAIResponse(
+      env,
       body.message,
       body.userId,
       body.history || [],
-      body.stream || false
+      body.stream || false,
+      personaName
     );
 
     // Handle streaming response
     if (body.stream) {
       // For streaming, pass through immediately and add sticker at the end
-      return handleStreamingWithSticker(aiResponse as ReadableStream, env, body);
+      return handleStreamingWithSticker(aiResponse as ReadableStream, env, body, personaName);
     }
 
     // Handle non-streaming response
@@ -75,6 +88,11 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
       "An internal error occurred",
       500
     );
+  } finally {
+    // 上报使用统计（异步，不阻塞响应）
+    reportUsage(env, user, personaName).catch(err => {
+      console.error("Failed to report usage:", err);
+    });
   }
 }
 
@@ -85,7 +103,8 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
 async function handleStreamingWithSticker(
   stream: ReadableStream,
   env: Env,
-  body: ChatRequest
+  body: ChatRequest,
+  personaName?: string
 ): Promise<Response> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -198,4 +217,48 @@ async function handleStreamingWithSticker(
       "Connection": "keep-alive",
     },
   });
+}
+
+/**
+ * 上报使用统计（直接写入数据库）
+ */
+async function reportUsage(env: Env, user: User, personaName?: string): Promise<void> {
+  const persona = personaName || "nako";
+  try {
+    const date = new Date().toISOString().split('T')[0];
+    const now = Date.now();
+
+    // 插入活动记录
+    await env.DB.prepare(`
+      INSERT INTO user_activities (user_id, project, event_type, metadata, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      user.id,
+      'nako',
+      `${persona}_conversation`,
+      JSON.stringify({ timestamp: now, persona }),
+      now
+    ).run();
+
+    // 更新统计数据
+    await env.DB.prepare(`
+      INSERT INTO user_stats (user_id, project, metric_name, metric_value, date, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, project, metric_name, date)
+      DO UPDATE SET
+        metric_value = CAST(metric_value AS INTEGER) + 1,
+        updated_at = ?
+    `).bind(
+      user.id,
+      'nako',
+      `${persona}_conversations`,
+      '1',
+      date,
+      now,
+      now,
+      now
+    ).run();
+  } catch (error) {
+    console.error('Error reporting usage:', error);
+  }
 }
